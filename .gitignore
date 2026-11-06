@@ -1,0 +1,28 @@
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local applicant information and job-search preferences
+applicant.json
+applican.json
+config.json
+profile.txt
+resume.txt
+resume.pdf
+*.pdf
+
+# Local job data and generated answer drafts
+job.txt
+questions.txt
+draft_answers.json
+jobs.sqlite3
+matches.csv
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs and operating system files
+*.log
+.DS_Store

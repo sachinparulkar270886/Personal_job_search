@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Search Scan</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #10141c;
+      color: #eef2f8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 32px 18px;
+      background: radial-gradient(ellipse at 15% 0%, #1b2940 0, transparent 52%), #10141c;
+    }
+    main { width: min(920px, 100%); }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: #79b8ff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 44px); letter-spacing: -.04em; }
+    .intro { margin: 12px 0 26px; color: #a9b5c7; line-height: 1.6; }
+    .panel {
+      overflow: hidden;
+      border: 1px solid #293447;
+      border-radius: 16px;
+      background: #171d28;
+      box-shadow: 0 24px 70px #0005;
+    }
+    .toolbar {
+      min-height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 22px;
+      border-bottom: 1px solid #293447;
+    }
+    .status { display: flex; align-items: center; gap: 10px; color: #c2ccda; font-size: 14px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #758196; }
+    .dot.running { background: #58a6ff; box-shadow: 0 0 12px #58a6ff; animation: pulse 1.2s infinite; }
+    .dot.success { background: #3ecf8e; }
+    .dot.error { background: #ff6b6b; }
+    @keyframes pulse { 50% { opacity: .4; } }
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 17px;
+      background: #3478f6;
+      color: white;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: #4a89ff; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    #scan-button:disabled { opacity: .4; filter: grayscale(.35); }
+    .actions { display: flex; gap: 10px; }
+    .secondary-button { background: #293447; }
+    .secondary-button:hover:not(:disabled) { background: #38465d; }
+    .log-heading {
+      display: flex;
+      justify-content: space-between;
+      padding: 15px 22px 10px;
+      color: #91a0b5;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    #logs {
+      height: min(56vh, 480px);
+      min-height: 240px;
+      overflow: auto;
+      padding: 4px 22px 22px;
+      color: #d3deec;
+      font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .empty { color: #758196; }
+    #matches-section { border-top: 1px solid #293447; }
+    #matches-panel { overflow: auto; padding: 0 22px 22px; }
+    #matches-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #matches-table th, #matches-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #293447;
+      text-align: left;
+      vertical-align: top;
+    }
+    #matches-table th { color: #91a0b5; font-size: 11px; text-transform: uppercase; }
+    #matches-table td { color: #d3deec; }
+    #matches-table a { color: #79b8ff; }
+    #matches-table .job-title-button {
+      padding: 0;
+      background: transparent;
+      color: #79b8ff;
+      font: inherit;
+      text-align: left;
+      text-decoration: underline;
+    }
+    #matches-table .job-title-button:hover { color: #a4d0ff; }
+    #matches-message { margin: 0; padding: 10px 0; color: #a9b5c7; }
+    #apply-confirmation {
+      width: min(520px, calc(100% - 32px));
+      border: 1px solid #39465b;
+      border-radius: 14px;
+      padding: 24px;
+      background: #171d28;
+      color: #eef2f8;
+      box-shadow: 0 24px 70px #0009;
+    }
+    #apply-confirmation[open] {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    #apply-confirmation::backdrop { background: #080b10b8; }
+    #apply-confirmation p { margin: 0; color: #c2ccda; font-size: 14px; line-height: 1.6; }
+    .confirmation-actions { display: flex; gap: 8px; }
+    #busy-dialog {
+      width: min(460px, calc(100% - 32px));
+      border: 1px solid #39465b;
+      border-radius: 14px;
+      padding: 24px;
+      background: #171d28;
+      color: #eef2f8;
+      box-shadow: 0 24px 70px #0009;
+    }
+    #busy-dialog::backdrop { background: #080b10b8; }
+    #busy-dialog h2 { margin: 0 0 12px; font-size: 20px; }
+    #busy-message { margin: 0 0 20px; color: #c2ccda; line-height: 1.6; white-space: pre-wrap; }
+    #busy-dialog button { display: block; margin-left: auto; }
+    .hint { margin: 14px 2px 0; color: #8491a4; font-size: 12px; }
+    @media (max-width: 520px) {
+      .toolbar { align-items: flex-start; flex-direction: column; }
+      .actions { width: 100%; flex-direction: column; }
+      #apply-confirmation[open] { align-items: stretch; flex-direction: column; }
+      .confirmation-actions { flex-direction: column; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">Local job-search agent</p>
+    <h1>Job scan</h1>
+    <p class="intro">Start a scan and follow its output here. The scan runs on this computer using your existing configuration.</p>
+    <section class="panel" aria-label="Job scan controls and output">
+      <div class="toolbar">
+        <div class="status" role="status" aria-live="polite">
+          <span id="status-dot" class="dot"></span>
+          <span id="status-text">Ready to scan</span>
+        </div>
+        <div class="actions">
+          <button id="scan-button" type="button">Start scan</button>
+          <button id="matches-button" class="secondary-button" type="button" aria-expanded="false" aria-controls="matches-section">View matches</button>
+        </div>
+      </div>
+      <dialog id="apply-confirmation" aria-labelledby="confirmation-prompt">
+        <p id="confirmation-prompt"></p>
+        <div class="confirmation-actions">
+          <button id="applied-yes" type="button">Yes, I applied</button>
+          <button id="applied-no" class="secondary-button" type="button">No, I did not apply</button>
+        </div>
+      </dialog>
+      <div class="log-heading">
+        <span>Scan log</span>
+        <span id="log-count">0 lines</span>
+      </div>
+      <div id="logs" role="log" aria-live="polite" aria-relevant="additions text"><span class="empty">Scan output will appear here.</span></div>
+      <section id="matches-section" hidden aria-label="Matches from matches.csv">
+        <div class="log-heading">
+          <span>Matches</span>
+          <span id="matches-count"></span>
+        </div>
+        <div id="matches-panel">
+          <p id="matches-message" role="status"></p>
+          <table id="matches-table" hidden>
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+    <p class="hint">Keep this page open while the scan runs. Ollama must be running for job scoring.</p>
+  </main>
+  <dialog id="busy-dialog" aria-labelledby="busy-title">
+    <h2 id="busy-title">Please wait</h2>
+    <p id="busy-message"></p>
+    <form method="dialog"><button type="submit">Okay</button></form>
+  </dialog>
+  <script>
+    const scanButton = document.querySelector('#scan-button');
+    const statusDot = document.querySelector('#status-dot');
+    const statusText = document.querySelector('#status-text');
+    const logsPanel = document.querySelector('#logs');
+    const logCount = document.querySelector('#log-count');
+    const matchesButton = document.querySelector('#matches-button');
+    const matchesSection = document.querySelector('#matches-section');
+    const matchesCount = document.querySelector('#matches-count');
+    const matchesMessage = document.querySelector('#matches-message');
+    const matchesTable = document.querySelector('#matches-table');
+    const applyConfirmation = document.querySelector('#apply-confirmation');
+    const confirmationPrompt = document.querySelector('#confirmation-prompt');
+    const appliedYes = document.querySelector('#applied-yes');
+    const appliedNo = document.querySelector('#applied-no');
+    const busyDialog = document.querySelector('#busy-dialog');
+    const busyMessage = document.querySelector('#busy-message');
+    let runId = null;
+    let nextIndex = 0;
+    let displayedCount = 0;
+    let activeApplyToken = null;
+    let activeApplyJob = null;
+    let applicationStarting = false;
+    let scanRunning = false;
+    let scanCompleted = false;
+    let matchesViewed = false;
+    let scanProgress = 'Waiting for the first status update.';
+
+    function setStatus(running, exitCode) {
+      scanButton.disabled = running || scanCompleted;
+      statusDot.className = `dot${running ? ' running' : exitCode === 0 ? ' success' : exitCode !== null ? ' error' : ''}`;
+      statusText.textContent = running
+        ? 'Scan in progress…'
+        : exitCode === 0
+          ? 'Scan completed successfully'
+          : exitCode !== null
+            ? `Scan failed (exit code ${exitCode})`
+            : 'Ready to scan';
+    }
+
+    function showBusyNotice(event) {
+      let message = '';
+      if (scanRunning) {
+        message = `A scan is currently running.\nCurrent status: ${scanProgress}\nPlease wait until the scan completes before starting another action.`;
+      } else if (applicationStarting) {
+        message = 'A job is being opened. Please wait until it finishes opening.';
+      } else if (activeApplyToken && activeApplyJob) {
+        message = `Application in progress: ${activeApplyJob.title} at ${activeApplyJob.company}.\nFinish reviewing this job and answer Yes or No before using another action.`;
+      }
+      if (!message) return false;
+      event.preventDefault();
+      busyMessage.textContent = message;
+      busyDialog.showModal();
+      return true;
+    }
+
+    function addLog(line) {
+      if (displayedCount === 0) logsPanel.replaceChildren();
+      const entry = document.createElement('div');
+      entry.textContent = line;
+      logsPanel.append(entry);
+      displayedCount += 1;
+      logCount.textContent = `${displayedCount} ${displayedCount === 1 ? 'line' : 'lines'}`;
+      logsPanel.scrollTop = logsPanel.scrollHeight;
+    }
+
+    async function refreshStatus() {
+      try {
+        const response = await fetch(`/api/status?after=${nextIndex}`, { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not read scan status');
+        if (runId !== data.run_id) {
+          runId = data.run_id;
+          nextIndex = data.first_index;
+          displayedCount = 0;
+          scanProgress = 'Waiting for the first status update.';
+          logCount.textContent = '0 lines';
+          logsPanel.innerHTML = '<span class="empty">Scan output will appear here.</span>';
+        }
+        for (const log of data.logs) {
+          addLog(log.text);
+          if (log.text.trim()) scanProgress = log.text.trim();
+          nextIndex = log.index + 1;
+        }
+        if (nextIndex < data.first_index) nextIndex = data.first_index;
+        scanRunning = data.running;
+        scanCompleted = data.run_id > 0 && !data.running;
+        setStatus(data.running, data.exit_code);
+      } catch (error) {
+        statusDot.className = 'dot error';
+        statusText.textContent = `Dashboard connection error: ${error.message}`;
+      }
+    }
+
+    scanButton.addEventListener('click', async (event) => {
+      if (showBusyNotice(event)) return;
+      scanRunning = true;
+      scanProgress = 'Starting scan.';
+      setStatus(true, null);
+      statusText.textContent = 'Starting scan…';
+      try {
+        const response = await fetch('/api/scan', { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not start scan');
+        await refreshStatus();
+      } catch (error) {
+        scanRunning = false;
+        scanCompleted = true;
+        setStatus(false, 1);
+        statusText.textContent = error.message;
+      }
+    });
+
+    async function loadMatches() {
+      matchesButton.disabled = true;
+      matchesMessage.textContent = 'Loading matches.csv…';
+      matchesTable.hidden = true;
+      try {
+        const response = await fetch('/api/matches', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load matches.csv');
+
+        const head = matchesTable.querySelector('thead');
+        const body = matchesTable.querySelector('tbody');
+        head.replaceChildren();
+        body.replaceChildren();
+        const headerRow = document.createElement('tr');
+        const numberHeader = document.createElement('th');
+        numberHeader.scope = 'col';
+        numberHeader.textContent = '#';
+        headerRow.append(numberHeader);
+        for (const header of data.headers) {
+          const cell = document.createElement('th');
+          cell.scope = 'col';
+          cell.textContent = header.replaceAll('_', ' ');
+          headerRow.append(cell);
+        }
+        head.append(headerRow);
+        for (const [index, row] of data.rows.entries()) {
+          const tableRow = document.createElement('tr');
+          const jobNumber = index + 1;
+          const numberCell = document.createElement('td');
+          numberCell.textContent = String(jobNumber);
+          tableRow.append(numberCell);
+          for (const header of data.headers) {
+            const cell = document.createElement('td');
+            const value = row[header] ?? '';
+            if (header === 'title' && value) {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'job-title-button';
+              button.dataset.jobNumber = String(jobNumber);
+              button.textContent = value;
+              cell.append(button);
+            } else if (header === 'url' && value) {
+              const link = document.createElement('a');
+              link.href = value;
+              link.textContent = value;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              link.dataset.jobNumber = String(jobNumber);
+              cell.append(link);
+            } else {
+              cell.textContent = value;
+            }
+            tableRow.append(cell);
+          }
+          body.append(tableRow);
+        }
+        matchesCount.textContent = `${data.rows.length} ${data.rows.length === 1 ? 'job' : 'jobs'}`;
+        matchesMessage.textContent = data.rows.length ? '' : 'No matches found. Run a scan to refresh matches.csv.';
+        matchesTable.hidden = data.rows.length === 0;
+        matchesViewed = true;
+      } catch (error) {
+        matchesCount.textContent = '';
+        matchesMessage.textContent = error.message;
+        matchesViewed = false;
+      } finally {
+        matchesButton.disabled = false;
+      }
+    }
+
+    matchesButton.addEventListener('click', async (event) => {
+      if (showBusyNotice(event)) return;
+      if (!scanCompleted) {
+        event.preventDefault();
+        busyMessage.textContent = 'Start a scan and wait for it to complete before viewing matches.';
+        busyDialog.showModal();
+        return;
+      }
+      const shouldShow = matchesSection.hidden;
+      matchesSection.hidden = !shouldShow;
+      matchesButton.setAttribute('aria-expanded', String(shouldShow));
+      if (shouldShow) await loadMatches();
+    });
+
+    async function openJobForApplication(jobNumber, event) {
+      if (showBusyNotice(event)) return;
+      if (!matchesViewed) {
+        busyMessage.textContent = 'View matches after the scan completes, then select a job to apply.';
+        busyDialog.showModal();
+        return;
+      }
+      if (!Number.isSafeInteger(jobNumber) || jobNumber < 1) {
+        matchesMessage.textContent = 'Could not open this job: invalid job number.';
+        return;
+      }
+
+      const jobTab = window.open('about:blank', '_blank');
+      if (!jobTab) {
+        matchesMessage.textContent = 'The new tab was blocked. Allow pop-ups for this local dashboard and try again.';
+        return;
+      }
+      jobTab.opener = null;
+      applicationStarting = true;
+      matchesMessage.textContent = 'Opening the selected job…';
+      if (applyConfirmation.open) applyConfirmation.close();
+      try {
+        const response = await fetch('/api/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_number: jobNumber }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not open this job');
+
+        activeApplyToken = data.token;
+        activeApplyJob = { title: data.title, company: data.company };
+        jobTab.location.href = data.url;
+        confirmationPrompt.textContent = `Did you apply to ${data.title} at ${data.company}? Confirm after reviewing the job page.`;
+        applyConfirmation.showModal();
+        matchesMessage.textContent = '';
+      } catch (error) {
+        jobTab.close();
+        matchesMessage.textContent = error.message;
+      } finally {
+        applicationStarting = false;
+      }
+    }
+
+    async function confirmApplication(applied) {
+      if (!activeApplyToken) return;
+      appliedYes.disabled = true;
+      appliedNo.disabled = true;
+      try {
+        const response = await fetch('/api/apply/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: activeApplyToken, applied }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not save your response');
+        activeApplyToken = null;
+        activeApplyJob = null;
+        applyConfirmation.close();
+        matchesMessage.textContent = data.message;
+        if (applied && !matchesSection.hidden) await loadMatches();
+      } catch (error) {
+        matchesMessage.textContent = error.message;
+      } finally {
+        appliedYes.disabled = false;
+        appliedNo.disabled = false;
+      }
+    }
+
+    appliedYes.addEventListener('click', () => confirmApplication(true));
+    appliedNo.addEventListener('click', () => confirmApplication(false));
+    matchesTable.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+      const jobControl = event.target.closest('[data-job-number]');
+      if (!jobControl) return;
+      event.preventDefault();
+      void openJobForApplication(Number(jobControl.dataset.jobNumber), event);
+    });
+    applyConfirmation.addEventListener('cancel', (event) => event.preventDefault());
+
+    refreshStatus();
+    async function poll() {
+      await refreshStatus();
+      window.setTimeout(poll, 1000);
+    }
+    window.setTimeout(poll, 1000);
+  </script>
+</body>
+</html>

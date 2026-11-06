@@ -1,0 +1,42 @@
+{
+  "greenhouse_boards": [],
+  "lever_sites": [],
+  "model": "llama3.2:3b",
+  "minimum_score": 70,
+  "max_jobs_to_score": 60,
+  "profile_file": "profile.txt",
+  "resume_path": "resume.pdf",
+  "enable_himalayas": true,
+  "himalayas_pages": 2,
+  "ashby_boards": [],
+  "search_terms": [
+    "DevOps Engineer",
+    "Site Reliability Engineer",
+    "Platform Engineer"
+  ],
+  "indexed_sites": [
+    "linkedin.com",
+    "trulyremotework.com",
+    "nofluffjobs.com",
+    "jobs.ashbyhq.com",
+    "myworkdayjobs.com"
+  ],
+  "max_web_queries": 12,
+  "free_sources": [
+    "remoteok",
+    "remotive",
+    "jobicy",
+    "arbeitnow"
+  ],
+  "free_api_search_terms": [
+    "devops",
+    "site reliability",
+    "platform engineer"
+  ],
+  "jobicy_tags": [
+    "devops",
+    "engineering"
+  ],
+  "free_api_limit": 50,
+  "arbeitnow_pages": 2
+}
