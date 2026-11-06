@@ -1,4 +1,5 @@
 import csv
+from html import escape
 import json
 import sqlite3
 import subprocess
@@ -56,7 +57,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlparse(self.path).path
         if path == '/':
-            page = (ROOT / 'dashboard.html').read_bytes()
+            try:
+                applicant = json.loads((ROOT / 'applicant.json').read_text(encoding='utf-8'))
+                if not isinstance(applicant, dict):
+                    raise ValueError('Applicant profile must be a JSON object')
+                first_name = applicant.get('first_name')
+                if not isinstance(first_name, str) or not first_name.strip():
+                    raise ValueError('Applicant profile must include a first_name')
+                page = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+                print(f'Could not load applicant profile for dashboard: {exc}')
+                self.send_error(500, 'Could not load applicant profile')
+                return
+
+            page = page.replace('{{first_name}}', escape(first_name.strip()))
+            page = page.encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(page)))
