@@ -136,7 +136,7 @@ def open_application(url):
         raise RuntimeError('Could not open the job link in your default browser')
     print('Opened in your default browser. Complete any human verification, then review and apply manually.')
     while True:
-        answer = input('Did you apply to this job? [y/n]: ').strip().lower()
+        answer = input('Did you apply to this job? [y/n/e]: ').strip().lower()
         if answer in {'y', 'yes'}:
             mark_application_completed(url)
             print('Recorded as completed and applied. It will be excluded from scans for 30 days.')
@@ -144,12 +144,17 @@ def open_application(url):
         if answer in {'n', 'no'}:
             print('Not marked complete; this job can appear in future scans.')
             return
-        print('Please answer yes or no.')
+        if answer in {'e', 'expired', 'not-suitable', 'not suitable'}:
+            mark_application_completed(url, detail='User marked this job as not suitable or expired after reviewing it')
+            print('Recorded as not suitable or expired. It will be excluded from scans for 30 days.')
+            return
+        print('Please answer yes, no, or expired/not suitable.')
 
 
-def mark_application_completed(url):
+def mark_application_completed(url, detail=None):
     timestamp = datetime.now(timezone.utc).isoformat()
-    detail = 'User confirmed application was submitted after opening the job link'
+    if detail is None:
+        detail = 'User confirmed application was submitted after opening the job link'
     with sqlite3.connect(DB) as con:
         con.execute(
             'CREATE TABLE IF NOT EXISTS applications '

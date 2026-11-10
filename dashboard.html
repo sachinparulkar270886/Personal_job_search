@@ -174,6 +174,7 @@
         <div class="confirmation-actions">
           <button id="applied-yes" type="button">Yes, I applied</button>
           <button id="applied-no" class="secondary-button" type="button">No, I did not apply</button>
+          <button id="not-suitable" class="secondary-button" type="button">Not suitable for me or job expired</button>
         </div>
       </dialog>
       <div class="log-heading">
@@ -217,6 +218,7 @@
     const confirmationPrompt = document.querySelector('#confirmation-prompt');
     const appliedYes = document.querySelector('#applied-yes');
     const appliedNo = document.querySelector('#applied-no');
+    const notSuitable = document.querySelector('#not-suitable');
     const busyDialog = document.querySelector('#busy-dialog');
     const busyMessage = document.querySelector('#busy-message');
     let runId = null;
@@ -249,7 +251,7 @@
       } else if (applicationStarting) {
         message = 'A job is being opened. Please wait until it finishes opening.';
       } else if (activeApplyToken && activeApplyJob) {
-        message = `Application in progress: ${activeApplyJob.title} at ${activeApplyJob.company}.\nFinish reviewing this job and answer Yes or No before using another action.`;
+        message = `Application in progress: ${activeApplyJob.title} at ${activeApplyJob.company}.\nFinish reviewing this job and choose an outcome before using another action.`;
       }
       if (!message) return false;
       event.preventDefault();
@@ -431,7 +433,7 @@
         activeApplyToken = data.token;
         activeApplyJob = { title: data.title, company: data.company };
         jobTab.location.href = data.url;
-        confirmationPrompt.textContent = `Did you apply to ${data.title} at ${data.company}? Confirm after reviewing the job page.`;
+        confirmationPrompt.textContent = `After reviewing ${data.title} at ${data.company}, what happened?`;
         applyConfirmation.showModal();
         matchesMessage.textContent = '';
       } catch (error) {
@@ -442,15 +444,14 @@
       }
     }
 
-    async function confirmApplication(applied) {
+    async function confirmApplication(decision) {
       if (!activeApplyToken) return;
-      appliedYes.disabled = true;
-      appliedNo.disabled = true;
+      [appliedYes, appliedNo, notSuitable].forEach((button) => button.disabled = true);
       try {
         const response = await fetch('/api/apply/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: activeApplyToken, applied }),
+          body: JSON.stringify({ token: activeApplyToken, decision }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not save your response');
@@ -458,17 +459,17 @@
         activeApplyJob = null;
         applyConfirmation.close();
         matchesMessage.textContent = data.message;
-        if (applied && !matchesSection.hidden) await loadMatches();
+        if ((decision === 'applied' || decision === 'not_suitable') && !matchesSection.hidden) await loadMatches();
       } catch (error) {
         matchesMessage.textContent = error.message;
       } finally {
-        appliedYes.disabled = false;
-        appliedNo.disabled = false;
+        [appliedYes, appliedNo, notSuitable].forEach((button) => button.disabled = false);
       }
     }
 
-    appliedYes.addEventListener('click', () => confirmApplication(true));
-    appliedNo.addEventListener('click', () => confirmApplication(false));
+    appliedYes.addEventListener('click', () => confirmApplication('applied'));
+    appliedNo.addEventListener('click', () => confirmApplication('not_applied'));
+    notSuitable.addEventListener('click', () => confirmApplication('not_suitable'));
     matchesTable.addEventListener('click', (event) => {
       if (!(event.target instanceof Element)) return;
       const jobControl = event.target.closest('[data-job-number]');

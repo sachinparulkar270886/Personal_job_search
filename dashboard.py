@@ -183,8 +183,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
             try:
                 payload = self.read_json_body()
                 apply_token = payload.get('token')
-                applied = payload.get('applied')
-                if not isinstance(apply_token, str) or not apply_token or not isinstance(applied, bool):
+                if 'decision' in payload:
+                    decision = payload.get('decision')
+                    if decision not in {'applied', 'not_applied', 'not_suitable'}:
+                        self.send_json(400, {'error': 'A valid confirmation is required'})
+                        return
+                else:
+                    applied = payload.get('applied')
+                    if not isinstance(apply_token, str) or not apply_token or not isinstance(applied, bool):
+                        self.send_json(400, {'error': 'A valid confirmation is required'})
+                        return
+                    decision = 'applied' if applied else 'not_applied'
+                if not isinstance(apply_token, str) or not apply_token:
                     self.send_json(400, {'error': 'A valid confirmation is required'})
                     return
             except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
@@ -197,20 +207,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     self.send_json(404, {'error': 'Application confirmation expired; select the job again'})
                     return
                 del state['pending_applies'][apply_token]
-                if not applied:
+                if decision == 'not_applied':
                     self.send_json(200, {'message': 'Not marked as applied'})
                     return
 
             try:
-                mark_application_completed(job_url)
+                if decision == 'not_suitable':
+                    mark_application_completed(job_url, detail='User marked this job as not suitable or expired after reviewing it')
+                    self.send_json(200, {'message': 'Recorded as not suitable or expired'})
+                else:
+                    mark_application_completed(job_url)
+                    self.send_json(200, {'message': 'Recorded as completed and applied'})
             except sqlite3.Error as exc:
                 with state_lock:
                     state['pending_applies'][apply_token] = job_url
                 print(f'Could not record completed application: {exc}')
                 self.send_json(500, {'error': 'Could not record the application; please try again'})
                 return
-
-            self.send_json(200, {'message': 'Recorded as completed and applied'})
             return
 
         if path != '/api/scan':
