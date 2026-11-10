@@ -80,24 +80,31 @@ def ashby(cfg):
 
 def indexed_search(cfg):
     """Optional Brave Search API: indexed links only, no direct LinkedIn scraping.
-    Configure BRAVE_SEARCH_API_KEY in environment; free allowance depends on plan.
+    Configure the key in config.json or BRAVE_SEARCH_API_KEY; limits depend on plan.
     """
-    key=os.environ.get("BRAVE_SEARCH_API_KEY","").strip()
-    if not key: return []
+    key=os.environ.get("BRAVE_SEARCH_API_KEY","").strip() or str(cfg.get("brave_search_api_key","")).strip()
+    if not key:
+        print("Brave indexed search skipped: no API key configured",file=sys.stderr)
+        return []
     out=[]
     sites=cfg.get("indexed_sites",[])
     terms=cfg.get("search_terms",[])
     max_queries=max(0,min(int(cfg.get("max_web_queries",12)),30))
     count=0
+    queries_by_site={}
+    results_by_site={}
+    valid_sites=[site for site in sites if re.fullmatch(r"[a-zA-Z0-9.-]+",site)]
     for site in sites:
         if not re.fullmatch(r"[a-zA-Z0-9.-]+",site): continue
         for term in terms:
-            if count>=max_queries: return out
+            if count>=max_queries: break
             count+=1
+            queries_by_site[site]=queries_by_site.get(site,0)+1
             try:
                 data=get_json("https://api.search.brave.com/res/v1/web/search",
                     {"q":f'site:{site} "{term}" remote',"count":20},
                     {"X-Subscription-Token":key,"Accept":"application/json"})
+                query_results=0
                 for result in data.get("web",{}).get("results",[]):
                     url=canonical(result.get("url",""))
                     if not url or not urlparse(url).hostname.endswith(site): continue
@@ -106,9 +113,19 @@ def indexed_search(cfg):
                     out.append({"id":"indexed:"+url,"company":site,
                       "title":title,"location":"Remote eligibility unverified",
                       "url":url,"description":desc})
+                    query_results+=1
+                results_by_site[site]=results_by_site.get(site,0)+query_results
             except Exception as e:
                 print(f"Indexed search {site} {term}: {e}",file=sys.stderr)
             time.sleep(0.3)
+        if count>=max_queries: break
+    for site in valid_sites:
+        if site in queries_by_site:
+            print(f"Brave indexed search {site}: {queries_by_site[site]} queries, "
+                  f"{results_by_site.get(site,0)} postings fetched")
+    requested_queries=len(valid_sites)*len(terms)
+    if count<requested_queries:
+        print(f"Brave query limit reached: ran {count} of {requested_queries} configured queries")
     return out
 
 def discover_extra(cfg):

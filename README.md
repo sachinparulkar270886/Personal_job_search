@@ -76,13 +76,19 @@ Ashby and Workday uses the **Brave Search API**, which requires a separately
 obtained API key (its current pricing/free allowance depends on your plan).
 This searches indexed pages and **does not log into or scrape LinkedIn**.
 
-```bash
-export BRAVE_SEARCH_API_KEY="your_brave_search_api_key"
-python agent.py scan
+Set `brave_search_api_key` in your ignored local `config.json`, or set the
+`BRAVE_SEARCH_API_KEY` environment variable. The environment variable takes
+precedence when both are configured. Never put a real key in
+`config.example.json` or commit it.
+
+```json
+"brave_search_api_key": "your_brave_search_api_key"
 ```
 
-Without `BRAVE_SEARCH_API_KEY`, the agent still searches Greenhouse, Lever,
-Himalayas and Ashby; indexed web discovery is skipped.
+Then run `python agent.py scan`.
+
+Without a Brave API key in `config.json` or the environment, the agent still
+searches Greenhouse, Lever, Himalayas and Ashby; indexed web discovery is skipped.
 
 Modify `search_terms`, `indexed_sites`, `ashby_boards`, and `max_web_queries`
 in `config.json`. A search result is not proof that a listing is live,

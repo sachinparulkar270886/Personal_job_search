@@ -56,13 +56,23 @@ def discover(cfg):
         print(f'Free source discovery failed: {exc}', file=sys.stderr)
     seen = set()
     filtered = []
+    indexed_total = 0
+    indexed_filtered = 0
     for j in out:
         normalized_url = j['url'].split('?')[0].rstrip('/').lower()
         if normalized_url in seen:
             continue
         seen.add(normalized_url)
+        is_indexed = j['id'].startswith('indexed:')
+        if is_indexed:
+            indexed_total += 1
         if TITLE.search(j['title']) and not EXCLUDE.search(j['location'] + ' ' + j['description']):
             filtered.append(j)
+            if is_indexed:
+                indexed_filtered += 1
+    if indexed_total:
+        print(f'Indexed listings passing title/location filters: '
+              f'{indexed_filtered}/{indexed_total}')
     return filtered
 
 
