@@ -8,6 +8,7 @@
   "resume_path": "resume.pdf",
   "enable_himalayas": true,
   "himalayas_pages": 2,
+  "himalayas_request_delay_seconds": 1,
   "ashby_boards": [],
   "search_terms": [
     "DevOps Engineer",
@@ -15,6 +16,16 @@
     "Platform Engineer"
   ],
   "indexed_sites": [
+    "wellfound.com",
+    "weworkremotely.com",
+    "scale.com",
+    "nodesk.co",
+    "app.terminal.io",
+    "justjoin.it",
+    "dynamitejobs.com",
+    "flexjobs.com",
+    "remotejobsfinder.co",
+    "rocketjobs.pl",
     "linkedin.com",
     "trulyremotework.com",
     "nofluffjobs.com",
@@ -22,7 +33,7 @@
     "myworkdayjobs.com"
   ],
   "brave_search_api_key": "",
-  "max_web_queries": 12,
+  "max_web_queries": 30,
   "free_sources": [
     "remoteok",
     "remotive",

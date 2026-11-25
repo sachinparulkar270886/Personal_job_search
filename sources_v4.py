@@ -29,33 +29,48 @@ def canonical(url):
 
 def himalayas(cfg):
     out=[]
+    request_delay=max(0.0,float(cfg.get("himalayas_request_delay_seconds",1)))
+    last_request=0
+    rate_limited=False
     for term in cfg.get("search_terms", []):
         for page in range(1, min(int(cfg.get("himalayas_pages", 2)),5)+1):
-            for country in ("PL",):
-                try:
-                    data=get_json("https://himalayas.app/jobs/api/search",
-                        {"q":term,"country":country,"sort":"recent","page":page})
-                    jobs=data.get("jobs", [])
-                    for j in jobs:
-                        url=j.get("applicationLink") or j.get("guid") or ""
-                        if not canonical(url): continue
-                        loc=j.get("locationRestrictions") or []
-                        out.append({
-                            "id":"himalayas:"+str(j.get("guid") or canonical(url)),
-                            "company":j.get("companyName") or "",
-                            "title":j.get("title") or "",
-                            "location":", ".join(str(x) for x in loc) if loc else "Remote; eligibility verify",
-                            "url":url,
-                            "description":plain(j.get("description") or j.get("excerpt")) +
-                              " Salary: "+str(j.get("currency") or "")+" "+
-                              str(j.get("minSalary") or "")+"-"+str(j.get("maxSalary") or "")+
-                              " per "+str(j.get("salaryPeriod") or "annual")
-                        })
-                    if not jobs: break
-                except Exception as e:
-                    print(f"Himalayas {term} page {page}: {e}",file=sys.stderr)
+            if last_request:
+                time.sleep(max(0, request_delay - (time.monotonic() - last_request)))
+            try:
+                last_request=time.monotonic()
+                data=get_json("https://himalayas.app/jobs/api/search",
+                    {"q":term,"country":"PL","sort":"recent","page":page})
+                jobs=data.get("jobs", [])
+                for j in jobs:
+                    url=j.get("applicationLink") or j.get("guid") or ""
+                    if not canonical(url): continue
+                    loc=j.get("locationRestrictions") or []
+                    out.append({
+                        "id":"himalayas:"+str(j.get("guid") or canonical(url)),
+                        "company":j.get("companyName") or "",
+                        "title":j.get("title") or "",
+                        "location":", ".join(str(x) for x in loc) if loc else "Remote; eligibility verify",
+                        "url":url,
+                        "description":plain(j.get("description") or j.get("excerpt")) +
+                          " Salary: "+str(j.get("currency") or "")+" "+
+                          str(j.get("minSalary") or "")+"-"+str(j.get("maxSalary") or "")+
+                          " per "+str(j.get("salaryPeriod") or "annual")
+                    })
+                if not jobs: break
+            except requests.HTTPError as e:
+                if e.response is not None and e.response.status_code == 429:
+                    print(f"Himalayas rate limit reached at {term} page {page}; "
+                          "stopping this source for this scan. Try again later.",
+                          file=sys.stderr)
+                    rate_limited=True
                     break
-            time.sleep(0.25)
+                print(f"Himalayas {term} page {page}: {e}",file=sys.stderr)
+                break
+            except Exception as e:
+                print(f"Himalayas {term} page {page}: {e}",file=sys.stderr)
+                break
+        if rate_limited:
+            break
     return out
 
 def ashby(cfg):
@@ -94,9 +109,8 @@ def indexed_search(cfg):
     queries_by_site={}
     results_by_site={}
     valid_sites=[site for site in sites if re.fullmatch(r"[a-zA-Z0-9.-]+",site)]
-    for site in sites:
-        if not re.fullmatch(r"[a-zA-Z0-9.-]+",site): continue
-        for term in terms:
+    for term in terms:
+        for site in valid_sites:
             if count>=max_queries: break
             count+=1
             queries_by_site[site]=queries_by_site.get(site,0)+1
